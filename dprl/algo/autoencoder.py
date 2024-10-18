@@ -59,7 +59,7 @@ class CategoricalAutoEncoder(nn.Module):
 
             hidden = torch.as_strided(hidden, size=(B, T - 1, E * 2), stride=(B, E, 1))
             action_predictions : torch.distributions.Normal = self.action_model(hidden)
-            action_loss = -action_predictions.log_prob(act).sum(dim=-1).mean()
+            action_loss = -action_predictions.log_prob(act).mean()
             info["loss/action"] = action_loss
             
         return reconstruction_loss + action_loss, reconstruction, info

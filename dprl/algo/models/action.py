@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.distributions import Normal
+from torch.distributions import Normal, Independent
 
 class ActionModel(nn.Module):
     def __init__(self,
@@ -33,7 +33,7 @@ class ActionModel(nn.Module):
         
         mu, log_var = torch.chunk(out, 2, dim=-1)
         
-        out = Normal(mu, torch.exp(log_var))
+        out = Independent(Normal(mu, torch.exp(log_var)), reinterpreted_batch_ndims=1)
         return out
         
                 
