@@ -1,0 +1,51 @@
+name: autoencoder_S
+
+total_steps: 100_000
+batch_size: 16
+
+base_channels: 128
+base_shape: [3, 64, 64]
+feedforward_dim: 2048
+
+compile: False
+n_devices: 1
+n_nodes: 1
+
+encoder:
+  base_channels: ${algo.base_channels}
+  in_shape: ${algo.base_shape}
+  channels_mult: [1, 2, 4, 8]
+  out_size: 4096
+  mlp_feedforward_dim: ${algo.feedforward_dim}
+
+decoder:
+  base_channels: ${algo.base_channels}
+  channels_mult: [8, 4, 2, 1]
+  out_shape: ${algo.base_shape}
+  mlp_feedforward_dim: ${algo.feedforward_dim}
+
+discriminator:
+  base_channels : 128
+  base_shape : ${algo.base_shape}
+  patch_size: [16, 16]
+  stride: [8, 8]
+  mlp_feedforward_dim: 1024
+  mlp_depth: 2
+  
+categorical:
+  stochastic_size: 64
+  num_states: 64
+  gradient_strategy: "st"
+  loss_strategy: "mse" # "gan" | "mse"
+  generator:
+    optim:
+      _target_: torch.optim.RMSprop
+      lr: 8e-5
+      eps: 1e-6
+      weight_decay: 1e-8
+  discriminator:
+    optim:
+      _target_: torch.optim.RMSprop
+      lr: 8e-5
+      eps: 1e-6
+      weight_decay: 1e-8
