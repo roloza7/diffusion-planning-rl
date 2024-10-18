@@ -1,0 +1,17 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - algo: defaults.yaml
+  - dataset: defaults.yaml
+  - metrics: defaults.yaml
+
+mode: train
+dry_run : False
+
+exp_name: ${algo.name}
+root_dir: ${algo.name}/${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  run:
+    dir: outputs/${algo.name}/${now:%Y-%m-%d_%H-%M-%S}

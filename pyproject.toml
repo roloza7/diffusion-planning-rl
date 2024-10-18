@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]  # REQUIRED if [build-system] table is used
+
+
+[project]
+name = "dprl"  # REQUIRED, is the only field that cannot be marked as dynamic.
+
+version = "0.1.0"  # REQUIRED, although can be dynamic
+
+description = "Forced diffusion implementation for reinforcement learning"
+
+readme = "README.md"
+
+requires-python = ">=3.9"
+license = {file = "LICENSE.txt"}
+
+authors = [
+  {name = "Rodrigo Loza", email = "roloza7@gmail.com" }
+]
+
+[tool.setuptools]
+package-data = {"sample" = ["*.dat"]}
+packages = ["fdrl"]
