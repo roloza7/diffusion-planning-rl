@@ -42,8 +42,8 @@ def train(cfg : DictConfig) -> None:
     
     model : CategoricalAutoEncoder
     model, generator_optim, discriminator_optim = CategoricalAutoEncoder.from_config(fabric, cfg.algo)
-    model.mark_forward_method(model.generator_step)
-    model.mark_forward_method(model.discriminator_step)
+    model.mark_forward_method("generator_step")
+    model.mark_forward_method("discriminator_step")
         
     # Compilation increases speeds by 20-35%, but only really works on linux with triton installed
     # Blame openai for rejecting PR's that add windows support
