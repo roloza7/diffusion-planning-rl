@@ -14,7 +14,6 @@ class AtariTransform():
                  num_channels : int = 1):
         self.transforms = {
             'observations': nn.Sequential(
-                v2.RandomHorizontalFlip(p=0.2),
                 v2.Resize(to_size),
                 v2.RandomCrop(to_size, padding=4),
                 v2.ToDtype(torch.float32, scale=True),
