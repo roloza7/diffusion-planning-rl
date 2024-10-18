@@ -134,7 +134,7 @@ def train(cfg : DictConfig) -> None:
                 if state.global_step % cfg.metrics.media_every == 0:
                     nrow = g_reconstruction.shape[1]
                     image_grid = make_grid(rearrange(g_reconstruction, "b t c h w -> (b t) c h w"), nrow=nrow)
-                    image = wandb.Image(image_grid.permute(1, 2, 0).cpu().numpy(), caption=f"Reconstructions at time {state.global_step}")
+                    image = wandb.Image(image_grid.permute(1, 2, 0).cpu().numpy()[:4], caption=f"Reconstructions at time {state.global_step}")
                     log["train/reconstructions"] = image
                 fabric.log_dict(log)
 
