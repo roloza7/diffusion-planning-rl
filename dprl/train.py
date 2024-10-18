@@ -63,7 +63,7 @@ def train(cfg : DictConfig) -> None:
     dataset = LiberoDatasetAdapter("datasets/libero_spatial",
                                  slice_len=50,
                                  transform=transform,
-                                 frameskip=5
+                                 frameskip=1
                                  )
         
     dataloader = DataLoader(
@@ -88,18 +88,18 @@ def train(cfg : DictConfig) -> None:
                           discriminator_optim=discriminator_optim,
                           global_step=global_step)
     
-    # checkpoints = glob.glob('outputs/**/**/checkpoints/*.ckp')
-    # if len(checkpoints) > 0:
-    #     checkpoint = max(checkpoints, key=os.path.getctime)
-    #     fabric.load(checkpoint, state=state)
+    checkpoints = glob.glob(f'outputs/{cfg.algo.name}/**/checkpoints/*.ckp')
+    if len(checkpoints) > 0:
+        checkpoint = max(checkpoints, key=os.path.getctime)
+        fabric.load(checkpoint, state=state)
     use_gan = cfg.algo.categorical.loss_strategy == "gan"
 
     print("Starting training loop")
     while global_step < cfg.algo.total_steps:
         for batch in dataloader:
             obs = batch["observations"]
-            # act = batch["actions"].to(dtype=torch.long)
-            
+            act = batch["actions"][:, :-1]
+
             # TODO : Implement action guidance here too
             
             """
@@ -116,7 +116,7 @@ def train(cfg : DictConfig) -> None:
             Generator optimization step
             """
             generator_optim.zero_grad(set_to_none=True)
-            g_loss, g_reconstruction, g_info = model.generator_step(obs)
+            g_loss, g_reconstruction, g_info = model.generator_step(obs, act=act)
             fabric.backward(g_loss)
             g_info["encoder/grad_norm"] = grad_norm(model.encoder, fabric.device)
             g_info["decoder/grad_norm"] = grad_norm(model.decoder, fabric.device)

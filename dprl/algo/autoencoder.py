@@ -7,16 +7,16 @@ from torch import (
     Tensor
 )
 from dprl.algo.categorical import CategoricalEncoder
-from dprl.algo.models import Encoder, Decoder, KernelDiscriminator
+from dprl.algo.models import Encoder, Decoder, KernelDiscriminator, ActionModel
 from hydra.utils import instantiate
 from lightning import Fabric
 from torch.optim import Optimizer
-
 
 class CategoricalAutoEncoder(nn.Module):
     def __init__(self,
                  encoder : CategoricalEncoder,
                  decoder : Decoder,
+                 action_model : ActionModel,
                  discriminator : KernelDiscriminator,
                  loss_strategy : str = "mse"
                  ):
@@ -24,6 +24,7 @@ class CategoricalAutoEncoder(nn.Module):
             
         self.encoder = encoder
         self.decoder = decoder
+        self.action_model = action_model
         self.discriminator = discriminator
         self.loss_strategy = loss_strategy
         
@@ -38,7 +39,7 @@ class CategoricalAutoEncoder(nn.Module):
         return [generator_optim]
         
     
-    def generator_step(self, x : Tensor) -> Tensor:
+    def generator_step(self, x : Tensor, act : Tensor = None) -> Tensor:
         """
         stub
         """
@@ -51,7 +52,17 @@ class CategoricalAutoEncoder(nn.Module):
             loss = - self.discriminator(reconstruction).mean() # Maximize fake_pred
         elif self.loss_strategy == "mse":
             loss = F.mse_loss(reconstruction, x)
-        info["loss"] = loss
+        info["loss/reconstruction"] = loss
+        
+        if act != None:
+            B, T, E = hidden.shape
+
+            hidden = torch.as_strided(hidden, size=(B, T - 1, E * 2), stride=(B, E, 1))
+            action_predictions : torch.distributions.Normal = self.action_model(hidden)
+            action_loss = -action_predictions.log_prob(act).sum(dim=-1).mean()
+            info["loss/action"] = loss
+            loss += action_loss
+            
         return loss, reconstruction, info
         
     def discriminator_step(self, obs : Tensor) -> Tensor:
@@ -89,10 +100,15 @@ class CategoricalAutoEncoder(nn.Module):
 
         discriminator = KernelDiscriminator(**cfg.discriminator) if use_gan else None
         
+        action_model = ActionModel(
+            **cfg.action_model
+        )
+        
         model = CategoricalAutoEncoder(
             encoder=cat_encoder,
             decoder=decoder,
             discriminator=discriminator,
+            action_model=action_model,
             loss_strategy=cfg.categorical.loss_strategy
         )
         

@@ -1,4 +1,4 @@
-name: autoencoder_S
+name: autoencoder_M
 
 total_steps: 100_000
 batch_size: 16
@@ -31,11 +31,17 @@ discriminator:
   stride: [8, 8]
   mlp_feedforward_dim: 1024
   mlp_depth: 2
+
+action_model:
+  in_dim: ${algo.encoder.out_size}
+  action_dim: 7
+  hidden_size: 2048
+  depth: 4
   
 categorical:
   stochastic_size: 64
   num_states: 64
-  gradient_strategy: "st"
+  gradient_strategy: "st" # "st" | "gumbel"
   loss_strategy: "mse" # "gan" | "mse"
   generator:
     optim:
