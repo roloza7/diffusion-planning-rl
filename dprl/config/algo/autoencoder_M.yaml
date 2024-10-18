@@ -8,8 +8,8 @@ base_shape: [3, 64, 64]
 feedforward_dim: 2048
 
 compile: False
-n_devices: 1
-n_nodes: 1
+n_devices: 2
+n_nodes: 4
 
 encoder:
   base_channels: ${algo.base_channels}
