@@ -118,6 +118,7 @@ def train(cfg : DictConfig) -> None:
             generator_optim.zero_grad(set_to_none=True)
             g_loss, g_reconstruction, g_info = model.generator_step(obs, act=act)
             fabric.backward(g_loss)
+            fabric.clip_gradients(model, generator_optim, max_norm=2.0)
             g_info["encoder/grad_norm"] = grad_norm(model.encoder, fabric.device)
             g_info["decoder/grad_norm"] = grad_norm(model.decoder, fabric.device)
             generator_optim.step()
