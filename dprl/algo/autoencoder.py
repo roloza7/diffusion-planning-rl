@@ -49,10 +49,10 @@ class CategoricalAutoEncoder(nn.Module):
         reconstruction = self.decoder(hidden)
         
         if self.loss_strategy == "gan":
-            loss = - self.discriminator(reconstruction).mean() # Maximize fake_pred
+            reconstruction_loss = - self.discriminator(reconstruction).mean() # Maximize fake_pred
         elif self.loss_strategy == "mse":
-            loss = F.mse_loss(reconstruction, x)
-        info["loss/reconstruction"] = loss
+            reconstruction_loss = F.mse_loss(reconstruction, x)
+        info["loss/reconstruction"] = reconstruction_loss
         
         if act != None:
             B, T, E = hidden.shape
@@ -61,9 +61,8 @@ class CategoricalAutoEncoder(nn.Module):
             action_predictions : torch.distributions.Normal = self.action_model(hidden)
             action_loss = -action_predictions.log_prob(act).sum(dim=-1).mean()
             info["loss/action"] = action_loss
-            loss += action_loss
             
-        return loss, reconstruction, info
+        return reconstruction_loss + action_loss, reconstruction, info
         
     def discriminator_step(self, obs : Tensor) -> Tensor:
         """
