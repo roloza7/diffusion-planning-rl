@@ -33,7 +33,7 @@ class ActionModel(nn.Module):
         
         mu, log_var = torch.chunk(out, 2, dim=-1)
         
-        out = Independent(Normal(mu, torch.exp(log_var)), reinterpreted_batch_ndims=1)
+        out = Independent(Normal(mu, torch.exp(0.5 * log_var)), reinterpreted_batch_ndims=1)
         return out
         
                 
