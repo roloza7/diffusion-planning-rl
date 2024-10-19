@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions import Normal, Independent
 
 class ActionModel(nn.Module):
@@ -22,18 +23,18 @@ class ActionModel(nn.Module):
             
         mlp += [
             nn.SELU(),
-            nn.Linear(hidden_size, action_dim * 2)
+            nn.Linear(hidden_size, action_dim)
         ]
         
         self.mlp = nn.Sequential(*mlp)
         
     def forward(self, x):
         
-        out = self.mlp(x)
+        mu = F.tanh(self.mlp(x))
         
-        mu, log_var = torch.chunk(out, 2, dim=-1)
+        std = torch.ones_like(mu)
         
-        out = Independent(Normal(mu, torch.exp(0.5 * log_var)), reinterpreted_batch_ndims=1)
+        out = Independent(Normal(mu, std), reinterpreted_batch_ndims=1)
         return out
         
                 
