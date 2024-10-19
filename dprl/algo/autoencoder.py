@@ -58,7 +58,7 @@ class CategoricalAutoEncoder(nn.Module):
         if act != None:
             B, T, E = hidden.shape
 
-            hidden = torch.as_strided(hidden, size=(B, T - 1, E * 2), stride=(B, E, 1))
+            hidden = torch.as_strided(hidden, size=(B, T - 1, E * 2), stride=(T * E, E, 1))
             action_predictions : torch.distributions.Normal = self.action_model(hidden)
             action_loss = -action_predictions.log_prob(act).mean()
             info["loss/action"] = action_loss

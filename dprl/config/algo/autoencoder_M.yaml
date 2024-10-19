@@ -15,7 +15,7 @@ encoder:
   base_channels: ${algo.base_channels}
   in_shape: ${algo.base_shape}
   channels_mult: [1, 2, 4, 8]
-  out_size: 4096
+  out_size: 1024
   mlp_feedforward_dim: ${algo.feedforward_dim}
 
 decoder:
@@ -35,17 +35,17 @@ discriminator:
 action_model:
   in_dim: ${algo.encoder.out_size}
   action_dim: 7
-  hidden_size: 2048
+  hidden_size: 1024
   depth: 4
   
 categorical:
-  stochastic_size: 64
-  num_states: 64
+  stochastic_size: 32
+  num_states: 32
   gradient_strategy: "st" # "st" | "gumbel"
   loss_strategy: "mse" # "gan" | "mse"
   generator:
     optim:
-      _target_: torch.optim.RMSprop
+      _target_: torch.optim.AdamW
       lr: 8e-5
       eps: 1e-6
       weight_decay: 1e-8
