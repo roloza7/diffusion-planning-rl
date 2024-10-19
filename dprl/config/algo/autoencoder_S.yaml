@@ -46,12 +46,12 @@ categorical:
   generator:
     optim:
       _target_: torch.optim.RMSprop
-      lr: 8e-5
+      lr: 8e-4
       eps: 1e-6
       weight_decay: 1e-6
   discriminator:
     optim:
       _target_: torch.optim.RMSprop
-      lr: 8e-5
+      lr: 8e-4
       eps: 1e-6
       weight_decay: 1e-6
