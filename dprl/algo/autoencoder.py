@@ -60,8 +60,11 @@ class CategoricalAutoEncoder(nn.Module):
 
             hidden = torch.as_strided(hidden, size=(B, T - 1, E * 2), stride=(T * E, E, 1))
             action_predictions : torch.distributions.Normal = self.action_model(hidden)
+            info["action_entropy"] = action_predictions.entropy()
             action_loss = -action_predictions.log_prob(act).mean()
             info["loss/action"] = action_loss
+        else:
+            action_loss = torch.tensor([0.0], device=x.device)
             
         return reconstruction_loss + action_loss, reconstruction, info
         
@@ -87,7 +90,7 @@ class CategoricalAutoEncoder(nn.Module):
         return grad, info
     
     @staticmethod
-    def from_config(fabric : Fabric, cfg : DictConfig) -> tuple[Self, Optimizer, Optimizer]:
+    def from_config(fabric : Fabric, cfg : DictConfig, eval : bool = False) -> tuple[Self, Optimizer, Optimizer]:
         
         encoder = Encoder(**cfg.encoder)
         cat_encoder = CategoricalEncoder(
@@ -111,6 +114,9 @@ class CategoricalAutoEncoder(nn.Module):
             action_model=action_model,
             loss_strategy=cfg.categorical.loss_strategy
         )
+        
+        if eval:
+            return fabric.setup_module(model)
         
         if use_gan:
             model, generator_optim, discriminator_optim = fabric.setup(model, *model.setup_optimizers(cfg.categorical))

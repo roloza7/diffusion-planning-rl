@@ -11,11 +11,12 @@ class AtariTransform():
     def __init__(self,
                  to_size: tuple[int, int],
                  swap_channels : bool = False,
-                 num_channels : int = 1):
+                 num_channels : int = 1,
+                 augment : bool = True):
         self.transforms = {
             'observations': nn.Sequential(
                 v2.Resize(to_size),
-                v2.RandomCrop(to_size, padding=4),
+                v2.RandomCrop(to_size, padding=4) if augment else v2.Identity(),
                 v2.ToDtype(torch.float32, scale=True),
                 v2.Normalize(mean=(0.5,) * num_channels, std=(0.5,) * num_channels)
             )

@@ -3,6 +3,7 @@ from torch import (
     empty,
     einsum
 )
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
@@ -36,6 +37,31 @@ class CategoricalEncoder(nn.Module):
         
     def _init_codebook(self):
         nn.init.xavier_normal_(self.codebook.data)
+        
+    @torch.inference_mode()
+    def get_categoricals(self, x : Tensor):
+        
+        N, S = self.num_states, self.stochastic_size
+        
+        h = self.encoder(x)
+        
+        logits = rearrange(h, "b t (n s) -> b t n s", n=N, s=S)
+        
+        dist = Independent(OneHotCategorical(logits=logits, validate_args=True),
+                           reinterpreted_batch_ndims=1)
+        
+        h_sample = dist.sample() # b t n s
+        
+        return h_sample
+    
+    @torch.inference_mode()
+    def get_latents(self, categoricals : Tensor):
+        
+        hidden = einsum("btck,cke->btce", categoricals, self.codebook)
+        
+        hidden = rearrange(hidden, "b t n e -> b t (n e)")
+        
+        return hidden
     
     def forward(self, x : Tensor, needs_grad : bool = True):
         
