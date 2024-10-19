@@ -32,6 +32,7 @@ class CategoricalAutoEncoder(nn.Module):
         return self.generator_step(x)
     
     def setup_optimizers(self, cfg : DictConfig):
+        generator_params = list(self.encoder.parameters()) + list(self.decoder.parameters()) + list(self.action_model.parameters())
         generator_optim = instantiate(cfg.generator.optim, params=list(self.encoder.parameters()) + list(self.decoder.parameters()))
         if self.loss_strategy == "gan": 
             discriminator_optim = instantiate(cfg.discriminator.optim, params=self.discriminator.parameters())
