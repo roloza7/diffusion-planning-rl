@@ -46,7 +46,7 @@ categorical:
   generator:
     optim:
       _target_: torch.optim.AdamW
-      lr: 8e-5
+      lr: 1.4e-4
       eps: 1e-6
       weight_decay: 1e-8
   discriminator:

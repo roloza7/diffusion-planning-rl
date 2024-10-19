@@ -52,7 +52,8 @@ class CategoricalEncoder(nn.Module):
         
         if needs_grad:
             if self.gradient_strategy == "st":
-                h_sample = h_sample + logits - logits.detach()
+                probs = F.softmax(logits, dim=-1)
+                h_sample = h_sample + probs - probs.detach()
             elif self.gradient_strategy == "gumbel":
                 soft_probs = F.gumbel_softmax(logits, tau=self.gumbel_temperature)
                 h_sample = h_sample + soft_probs - soft_probs.detach()
