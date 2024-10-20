@@ -43,12 +43,12 @@ class CategoricalAutoEncoder(nn.Module):
     def generator_step(self, x : Tensor, act : Tensor = None) -> Tensor:
         """
         stub
-        """
-        info = {}
-        
-        hidden = self.encoder(x)
+        """        
+        hidden, encoder_info = self.encoder(x)
         reconstruction = self.decoder(hidden)
         
+        info = encoder_info
+
         if self.loss_strategy == "gan":
             reconstruction_loss = - self.discriminator(reconstruction).mean() # Maximize fake_pred
         elif self.loss_strategy == "mse":
@@ -79,7 +79,7 @@ class CategoricalAutoEncoder(nn.Module):
         
         
         with torch.no_grad():
-            h = self.encoder(obs)
+            h, _ = self.encoder(obs)
             reconstruction = self.decoder(h)
             
         x = torch.cat([obs, reconstruction], dim=0)
@@ -90,7 +90,7 @@ class CategoricalAutoEncoder(nn.Module):
         return grad, info
     
     @staticmethod
-    def from_config(fabric : Fabric, cfg : DictConfig, eval : bool = False) -> tuple[Self, Optimizer, Optimizer]:
+    def from_config(fabric : Fabric, cfg : DictConfig, need_optim : bool = True) -> tuple[Self, Optimizer, Optimizer]:
         
         encoder = Encoder(**cfg.encoder)
         cat_encoder = CategoricalEncoder(
@@ -115,7 +115,7 @@ class CategoricalAutoEncoder(nn.Module):
             loss_strategy=cfg.categorical.loss_strategy
         )
         
-        if eval:
+        if need_optim == False:
             return fabric.setup_module(model)
         
         if use_gan:

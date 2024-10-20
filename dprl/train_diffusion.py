@@ -18,10 +18,11 @@ from einops import rearrange
 from dprl.data.datasets import LiberoDatasetAdapter
 from dprl.metrics import grad_norm
 from dprl.data.utils import collate_fn, AtariTransform
+from dprl.algo.seq2seq import LatentDFModel
 from dprl.algo.autoencoder import CategoricalAutoEncoder
 
 
-def train(cfg : DictConfig) -> None:
+def train_diffusion(cfg : DictConfig) -> None:
     print("Train function invoked")
     torch.autograd.set_detect_anomaly(False)
     # Might have to remove if you're using an old gpu
@@ -40,17 +41,23 @@ def train(cfg : DictConfig) -> None:
         if os.path.isdir(ckp_dir) == False:
             os.mkdir(ckp_dir)
     
-    model : CategoricalAutoEncoder
-    model, generator_optim, discriminator_optim = CategoricalAutoEncoder.from_config(fabric, cfg.algo)
-    model.mark_forward_method("generator_step")
-    model.mark_forward_method("discriminator_step")
-        
+    autoencoder : CategoricalAutoEncoder = CategoricalAutoEncoder.from_config(fabric, cfg.algo, need_optim=False)
+    
+    ae_checkpoints = glob.glob(f'outputs/{cfg.algo.base}/**/checkpoints/*.ckp')
+    if len(ae_checkpoints) > 0:
+        checkpoint = max(ae_checkpoints, key=os.path.getctime)
+        autoencoder.load_state_dict(torch.load(checkpoint)['model'])
+    else:
+        raise ValueError("No checkpoint found for autoencoder")
+    
+    model : LatentDFModel
+    model = LatentDFModel.from_config(fabric, cfg.algo, encoder=autoencoder.encoder, decoder=autoencoder.decoder, action_model=autoencoder.action_model)
+    optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-6)
+    
     # Compilation increases speeds by 20-35%, but only really works on linux with triton installed
     # Blame openai for rejecting PR's that add windows support
     if cfg.algo.compile == True:
         model = torch.compile(model)
-    
-    
     
     # Initializing breakout dataset
     # TODO: hydra config for this
@@ -84,15 +91,13 @@ def train(cfg : DictConfig) -> None:
     global_step = 0
     
     state = AttributeDict(model=model,
-                          generator_optim=generator_optim,
-                          discriminator_optim=discriminator_optim,
+                          optim=optim,
                           global_step=global_step)
     
     checkpoints = glob.glob(f'outputs/{cfg.algo.name}/**/checkpoints/*.ckp')
     if len(checkpoints) > 0:
         checkpoint = max(checkpoints, key=os.path.getctime)
         fabric.load(checkpoint, state=state)
-    use_gan = cfg.algo.categorical.loss_strategy == "gan"
 
     print("Starting training loop")
     while global_step < cfg.algo.total_steps:
@@ -103,40 +108,25 @@ def train(cfg : DictConfig) -> None:
             # TODO : Implement action guidance here too
             
             """
-            Discriminator optimization step
+            Diffusion optimization step
             """
-            if use_gan:
-                discriminator_optim.zero_grad(set_to_none=True)
-                d_grad, d_info = model.discriminator_step(obs)
-                fabric.backward(d_grad)
-                d_info["grad_norm"] = grad_norm(model.discriminator, fabric.device)
-                discriminator_optim.step()
-            
-            """
-            Generator optimization step
-            """
-            generator_optim.zero_grad(set_to_none=True)
-            g_loss, g_reconstruction, g_info = model.generator_step(obs, act=act)
-            fabric.backward(g_loss)
-            fabric.clip_gradients(model, generator_optim, max_norm=2.0)
-            g_info["encoder/grad_norm"] = grad_norm(model.encoder, fabric.device)
-            g_info["action_model/grad_norm"] = grad_norm(model.action_model, fabric.device)
-            g_info["decoder/grad_norm"] = grad_norm(model.decoder, fabric.device)
-            generator_optim.step()
+            optim.zero_grad(set_to_none=True)
+            x_pred, loss, info = model.forward(obs, act=act)
+            fabric.backward(loss)
+            fabric.clip_gradients(model, optim, max_norm=2.0)
+            info["diffusion/grad_norm"] = grad_norm(model.diffusion, fabric.device)
+            optim.step()
             
             # Logging
             if cfg.dry_run == False:
                 log = {}
-                if use_gan:
-                    for key, value in d_info.items():
-                        log[f"train/discriminator/{key}"] = value
-                for key, value in g_info.items():
+                for key, value in info.items():
                     print(key, value.shape)
-                    log[f"train/generator/{key}"] = value
+                    log[f"train/{key}"] = value
                 log[f"trainer/global_step"] = state.global_step
                 if state.global_step % cfg.metrics.media_every == 0:
                     nrow = 5
-                    image_grid = make_grid(rearrange(g_reconstruction[:5, ::10], "b t c h w -> (b t) c h w"), nrow=nrow)
+                    image_grid = make_grid(rearrange(x_pred[:5, ::10], "b t c h w -> (b t) c h w"), nrow=nrow)
                     image = wandb.Image(image_grid.permute(1, 2, 0).cpu().numpy(), caption=f"Reconstructions at time {state.global_step}")
                     log["train/reconstructions"] = image
                 fabric.log_dict(log)

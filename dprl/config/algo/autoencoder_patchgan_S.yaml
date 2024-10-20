@@ -1,7 +1,7 @@
-name: autoencoder_S
+name: autoencoder_patchgan_S
 
 total_steps: 100_000
-batch_size: 16
+batch_size: 1
 
 base_channels: 64
 base_shape: [3, 64, 64]
@@ -15,7 +15,7 @@ encoder:
   base_channels: ${algo.base_channels}
   in_shape: ${algo.base_shape}
   channels_mult: [1, 2, 4, 8]
-  out_size: 512
+  out_size: 256
   mlp_feedforward_dim: ${algo.feedforward_dim}
 
 decoder:
@@ -40,12 +40,12 @@ discriminator:
   
 categorical:
   stochastic_size: 16
-  num_states: 32
+  num_states: 16
   gradient_strategy: "st"
-  loss_strategy: "mse" # "gan" | "mse"
+  loss_strategy: "gan" # "gan" | "mse"
   generator:
     optim:
-      _target_: torch.optim.AdamW
+      _target_: torch.optim.RMSprop
       lr: 1.4e-4
       eps: 1e-6
       weight_decay: 1e-6

@@ -64,6 +64,7 @@ class CategoricalEncoder(nn.Module):
         return hidden
     
     def forward(self, x : Tensor, needs_grad : bool = True):
+        info = {}
         
         N, S = self.num_states, self.stochastic_size
         
@@ -73,6 +74,9 @@ class CategoricalEncoder(nn.Module):
         
         dist = Independent(OneHotCategorical(logits=logits, validate_args=True),
                            reinterpreted_batch_ndims=1)
+        
+        entropy = dist.entropy().mean()
+        info["categorical_entropy"] = entropy
         
         h_sample = dist.sample() # b t n s
         
@@ -90,7 +94,7 @@ class CategoricalEncoder(nn.Module):
         
         hidden = rearrange(hidden, "b t n e -> b t (n e)")
         
-        return hidden
+        return hidden, info
         
         
         

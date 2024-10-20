@@ -59,7 +59,7 @@ class Decoder(nn.Module):
         
         
     def forward(self, x : Tensor):
-        
+                
         assert len(x.shape) == 3, "Tensors should be supplied in (B, T, E) form"
         
         B, T = x.shape[:2]

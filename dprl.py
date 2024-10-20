@@ -5,6 +5,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import hydra
 from omegaconf import DictConfig, OmegaConf, SCMode
 from dprl.train import train
+from dprl.train_diffusion import train_diffusion
 from dprl.data.utils import dotdict
 
 @hydra.main(version_base=None, config_path="dprl/config", config_name="config")
@@ -14,7 +15,8 @@ def main(cfg : DictConfig) -> None:
     
     if cfg.mode == "train":
         train(cfg)
-        pass
+    elif cfg.mode == "train_diffusion":
+        train_diffusion(cfg)
 
     
 if __name__ == "__main__":
