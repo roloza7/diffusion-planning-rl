@@ -132,7 +132,7 @@ def train(cfg : DictConfig) -> None:
                         log[f"train/discriminator/{key}"] = value
                 for key, value in g_info.items():
                     print(key, value.shape)
-                    log[f"train/generator/{key}"] = value
+                    log[f"train/generator/{key}"] = value.mean()
                 log[f"trainer/global_step"] = state.global_step
                 if state.global_step % cfg.metrics.media_every == 0:
                     nrow = 5
