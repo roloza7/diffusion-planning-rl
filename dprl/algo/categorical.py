@@ -18,6 +18,7 @@ class CategoricalEncoder(nn.Module):
                  gradient_strategy : str = "st",
                  gumbel_temperature : float = 0.5,
                  state_embedding_size : int = None,
+                 use_codebook : bool = False,
                  **kwargs):
         super().__init__()
         
@@ -31,9 +32,10 @@ class CategoricalEncoder(nn.Module):
         self.out_size = self.state_embedding_size * self.num_states
         self.codebook = nn.Parameter(
             empty((self.num_states, self.stochastic_size, self.state_embedding_size))
-        )
+        ) if use_codebook else None
         
-        self._init_codebook()
+        if use_codebook:
+            self._init_codebook()
         
     def _init_codebook(self):
         nn.init.xavier_normal_(self.codebook.data)
@@ -57,7 +59,8 @@ class CategoricalEncoder(nn.Module):
     @torch.inference_mode()
     def get_latents(self, categoricals : Tensor):
         
-        hidden = einsum("btck,cke->btce", categoricals, self.codebook)
+        if self.codebook:
+            hidden = einsum("btck,cke->btce", categoricals, self.codebook)
         
         hidden = rearrange(hidden, "b t n e -> b t (n e)")
         
@@ -90,7 +93,8 @@ class CategoricalEncoder(nn.Module):
             else:
                 raise ValueError("Invalid gradient strategy")
         
-        hidden = einsum("btck,cke->btce", h_sample, self.codebook)
+        if self.codebook:
+            hidden = einsum("btck,cke->btce", h_sample, self.codebook)
         
         hidden = rearrange(hidden, "b t n e -> b t (n e)")
         

@@ -1,11 +1,11 @@
-name: autoencoder_S
+name: autoencoder_S_no_codebook
 
 total_steps: 100_000
 batch_size: 16
 
-base_channels: 64
+base_channels: 32
 base_shape: [3, 64, 64]
-feedforward_dim: 2048
+feedforward_dim: 1024
 
 compile: False
 n_devices: 1
@@ -15,7 +15,7 @@ encoder:
   base_channels: ${algo.base_channels}
   in_shape: ${algo.base_shape}
   channels_mult: [1, 2, 4, 8]
-  out_size: 512
+  out_size: 256
   mlp_feedforward_dim: ${algo.feedforward_dim}
 
 decoder:
@@ -40,10 +40,9 @@ discriminator:
   
 categorical:
   stochastic_size: 16
-  num_states: 32
+  num_states: 16
   gradient_strategy: "st"
   loss_strategy: "mse" # "gan" | "mse"
-  use_codebook: True
   generator:
     optim:
       _target_: torch.optim.AdamW

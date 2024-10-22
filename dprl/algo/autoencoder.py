@@ -116,7 +116,7 @@ class CategoricalAutoEncoder(nn.Module):
         )
         
         if need_optim == False:
-            return fabric.setup_module(model)
+            return model
         
         if use_gan:
             model, generator_optim, discriminator_optim = fabric.setup(model, *model.setup_optimizers(cfg.categorical))

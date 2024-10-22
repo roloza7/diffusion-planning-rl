@@ -15,6 +15,7 @@ from dprl.algo.models import (
 )
 from dprl.algo.categorical import CategoricalEncoder
 from einops import rearrange
+import tqdm
 
 import torch.nn.functional as F 
 
@@ -90,24 +91,28 @@ class LatentDFModel(nn.Module):
         batch_size, n_frames = obs.shape[:2]
         scheduling_matrix = self._generate_fullsequence_scheduling_matrix(n_frames, self.uncertainty_scale, self.diffusion.sampling_timesteps, mask.cpu())
         
-        x_pred = obs.clone()
-        x_pred[:, ~mask] = torch.randn_like(x_pred)[:, ~mask]
+        z, _ = self.encoder(obs)
+        
+        z = z.clone()
+        z[:, ~mask] = torch.randn_like(z)[:, ~mask]
         
         frames = []
         
-        for m in range(scheduling_matrix.shape[0]- 1):
+        for m in tqdm.trange(scheduling_matrix.shape[0]- 1):
             from_noise_levels = scheduling_matrix[None, m].repeat(batch_size, axis=0)
             to_noise_levles = scheduling_matrix[None, m + 1].repeat(batch_size, axis=0)
             
-            x_pred = self.diffusion.backward_sample(
-                x_pred,
+            z = self.diffusion.backward_sample(
+                z,
                 external_cond=external_cond,
                 curr_noise_level=from_noise_levels,
                 next_noise_level=to_noise_levles
             )
             
             if need_frames:
-                frames.append(x_pred.clone())
+                frames.append(z.clone())
+            
+        x_pred = self.decoder(z)
             
         if need_frames:    
             return x_pred, frames
