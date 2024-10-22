@@ -61,6 +61,8 @@ class CategoricalEncoder(nn.Module):
         
         if self.codebook:
             hidden = einsum("btck,cke->btce", categoricals, self.codebook)
+        else:
+            hidden = categoricals
         
         hidden = rearrange(hidden, "b t n e -> b t (n e)")
         
@@ -95,6 +97,8 @@ class CategoricalEncoder(nn.Module):
         
         if self.codebook:
             hidden = einsum("btck,cke->btce", h_sample, self.codebook)
+        else:
+            hidden = h_sample
         
         hidden = rearrange(hidden, "b t n e -> b t (n e)")
         
