@@ -70,7 +70,7 @@ def train(cfg : DictConfig) -> None:
         dataset=dataset,
         batch_size=cfg.algo.batch_size,
         pin_memory=True,
-        num_workers=0 if cfg.dry_run else 1,
+        num_workers=0 if cfg.dry_run else 7,
         persistent_workers=None if cfg.dry_run else True,
         prefetch_factor=None if cfg.dry_run else 2,
         drop_last=False,
