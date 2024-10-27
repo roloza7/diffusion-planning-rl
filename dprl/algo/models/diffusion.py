@@ -28,6 +28,8 @@ class Diffusion(nn.Module):
                  stabilization_level : float = 10,
                  ddim_sampling_eta : float = 1.0,
                  objective : str = "pred_noise",
+                 noise_type : str = "normal", # normal | categorical
+                 categorical_dim : int = 16,
                  model_kwargs : dict[str, Any] = {},
                  ):
         super().__init__()
@@ -43,6 +45,8 @@ class Diffusion(nn.Module):
         self.stabilization_level = stabilization_level
         self.ddim_sampling_eta = ddim_sampling_eta
         self.objective = objective
+        self.noise_type = noise_type
+        self.categorical_dim = categorical_dim
         self._build_buffers()
         self._build_model(**model_kwargs)
     
@@ -208,15 +212,24 @@ class Diffusion(nn.Module):
         if self.flatten:
             x = torch.flatten(x, start_dim=2)
         
-        noise = torch.randn_like(x)
-        noise = torch.clamp(noise, -self.clip_noise, self.clip_noise)
+        if self.noise_type == "normal":    
+            noise = torch.randn_like(x)
+            noise = torch.clamp(noise, -self.clip_noise, self.clip_noise)
+        elif self.noise_type == "categorical":
+            noise = torch.zeros_like(x).fill_(1.0 / self.categorical_dim)
         
         noised_x = self.forward_sample(x, noise_levels, noise=noise)
         epsilon, x_pred, pred = self.model_predictions(noised_x, noise_levels, external_cond=external_cond)
         
         if self.objective == "pred_noise":
+            if self.noise_type == "categorical":
+                raise ValueError("Not sure how to implement categorical noise prediction")
             target = noise
         elif self.objective == "pred_x0":
+            num_states = int(x.shape[-1] // self.categorical_dim)
+            pred = rearrange(pred, "b t (c k) -> b t c k", c=num_states, k=self.categorical_dim)
+            pred = F.softmax(pred, dim=-1)
+            pred = rearrange(pred, "b t c k -> b t (c k)")
             target = x
         
         

@@ -129,7 +129,7 @@ def train(cfg : DictConfig) -> None:
                 log = {}
                 if use_gan:
                     for key, value in d_info.items():
-                        log[f"train/discriminator/{key}"] = value
+                        log[f"train/discriminator/{key}"] = value.mean()
                 for key, value in g_info.items():
                     print(key, value.shape)
                     log[f"train/generator/{key}"] = value.mean()

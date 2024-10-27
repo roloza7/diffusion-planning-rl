@@ -1,0 +1,44 @@
+defaults:
+  - autoencoder_S_no_codebook.yaml
+  - _self_
+
+name: forced_diffusion_S
+base: autoencoder_S_no_codebook
+
+hidden_size: 256
+total_steps: 100_000
+save_every : 10_000
+
+compile: False
+
+optim:
+  _target_: torch.optim.AdamW
+  lr: 1e-4
+  eps: 1e-4
+  weight_decay: 0
+  betas: [0.9, 0.999]
+
+latent_df_model:
+  uncertainty_scale: 10.0
+  chunk_size: 0
+  sliding_window_ctx: 5
+
+diffusion_model:
+  x_external_cond_dim: 0
+  timesteps: 4000
+  sampling_timesteps: 1000
+  schedule_fn: cosine
+  schedule_fn_kwargs: {}
+  is_causal: False
+  clip_noise: 20.0
+  snr_clip: 5.0
+  stabilization_level: 10.0
+  ddim_sampling_eta: 1.0
+  objective: pred_x0
+  noise_type: categorical
+  categorical_dim: ${algo.categorical.stochastic_size}
+  model_kwargs:
+    hidden_size: ${algo.encoder.out_size}
+    num_layers: 4
+    nhead: 8
+    dim_feedforward: 2048

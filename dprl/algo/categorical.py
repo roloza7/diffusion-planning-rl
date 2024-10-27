@@ -59,7 +59,7 @@ class CategoricalEncoder(nn.Module):
     @torch.inference_mode()
     def get_latents(self, categoricals : Tensor):
         
-        if self.codebook:
+        if self.codebook is not None:
             hidden = einsum("btck,cke->btce", categoricals, self.codebook)
         else:
             hidden = categoricals
@@ -95,7 +95,7 @@ class CategoricalEncoder(nn.Module):
             else:
                 raise ValueError("Invalid gradient strategy")
         
-        if self.codebook:
+        if self.codebook is not None:
             hidden = einsum("btck,cke->btce", h_sample, self.codebook)
         else:
             hidden = h_sample

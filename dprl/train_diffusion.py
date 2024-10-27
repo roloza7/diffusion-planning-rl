@@ -121,8 +121,7 @@ def train_diffusion(cfg : DictConfig) -> None:
             if cfg.dry_run == False:
                 log = {}
                 for key, value in info.items():
-                    print(key, value.shape)
-                    log[f"train/{key}"] = value
+                    log[f"train/{key}"] = value.mean()
                 log[f"trainer/global_step"] = state.global_step
                 if state.global_step % cfg.metrics.media_every == 0:
                     nrow = 5
