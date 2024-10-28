@@ -12,6 +12,7 @@ from einops import rearrange
 import warnings
 from dprl.algo.models.transformer import Transformer
 from hydra.utils import instantiate
+from torch.distributions import Independent, OneHotCategorical
 
 class Diffusion(nn.Module):
     def __init__(self,
@@ -228,7 +229,8 @@ class Diffusion(nn.Module):
         elif self.objective == "pred_x0":
             num_states = int(x.shape[-1] // self.categorical_dim)
             pred = rearrange(pred, "b t (c k) -> b t c k", c=num_states, k=self.categorical_dim)
-            pred = F.softmax(pred, dim=-1)
+            pred_grad = F.softmax(pred, dim=-1)
+            pred = Independent(OneHotCategorical(logits=pred), reinterpreted_batch_ndims=1).sample() + pred_grad - pred_grad.detach()
             pred = rearrange(pred, "b t c k -> b t (c k)")
             target = x
         

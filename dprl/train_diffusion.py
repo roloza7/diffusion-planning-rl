@@ -14,6 +14,7 @@ from wandb.integration.lightning.fabric import WandbLogger
 import wandb
 import hydra
 from einops import rearrange
+import warnings
 
 from dprl.data.datasets import LiberoDatasetAdapter
 from dprl.metrics import grad_norm
@@ -47,12 +48,14 @@ def train_diffusion(cfg : DictConfig) -> None:
     if len(ae_checkpoints) > 0:
         checkpoint = max(ae_checkpoints, key=os.path.getctime)
         autoencoder.load_state_dict(torch.load(checkpoint)['model'])
+        train_autoencoder = False
     else:
-        raise ValueError("No checkpoint found for autoencoder")
+        warnings.warn("No checkpoint for autoencoder found. Training from scratch.")
+        train_autoencoder = True
     
     model : LatentDFModel
-    model = LatentDFModel.from_config(fabric, cfg.algo, encoder=autoencoder.encoder, decoder=autoencoder.decoder, action_model=autoencoder.action_model)
-    optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-6)
+    model = LatentDFModel.from_config(fabric, cfg.algo, encoder=autoencoder.encoder, decoder=autoencoder.decoder, action_model=autoencoder.action_model, train_autoencoder=train_autoencoder)
+    optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-8)
     
     # Compilation increases speeds by 20-35%, but only really works on linux with triton installed
     # Blame openai for rejecting PR's that add windows support

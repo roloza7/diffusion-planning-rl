@@ -28,12 +28,14 @@ class LatentDFModel(nn.Module):
                  *,
                  uncertainty_scale : float,
                  chunk_size : int,
-                 sliding_window_ctx : int):
+                 sliding_window_ctx : int,
+                 train_autoencoder : bool):
         super().__init__()
         self.diffusion : Diffusion = diffusion
         self.encoder = encoder
         self.decoder = decoder
         self.action_model = action_model
+        self.train_autoencoder = train_autoencoder
         
         # TODO: Add hydra config
         self.uncertainty_scale = uncertainty_scale
@@ -67,6 +69,10 @@ class LatentDFModel(nn.Module):
         
          
         x_pred = self.decoder(z_pred)
+        
+        if self.train_autoencoder:
+            ae_loss = F.mse_loss(self.decoder(z), obs)
+            info["loss/autoencoder"] = ae_loss
                         
         if act != None:
             B, T, E = z_pred.shape
@@ -77,7 +83,7 @@ class LatentDFModel(nn.Module):
             action_loss = -action_predictions.log_prob(act).mean()
             info["loss/action"] = action_loss
         
-        return x_pred, action_loss + diffusion_loss.mean(), info
+        return x_pred, action_loss + diffusion_loss.mean() + ae_loss, info
     
     @torch.inference_mode()
     def block_sample(self,
@@ -195,7 +201,7 @@ class LatentDFModel(nn.Module):
         return np.clip(scheduling_matrix, 0, sampling_timesteps)
     
     @staticmethod
-    def from_config(fabric : Fabric, cfg : DictConfig, encoder : CategoricalEncoder, decoder : Decoder, action_model : ActionModel) -> Self:
+    def from_config(fabric : Fabric, cfg : DictConfig, encoder : CategoricalEncoder, decoder : Decoder, action_model : ActionModel, train_autoencoder : bool = False) -> Self:
                                 
         diffusion = Diffusion(
             x_shape=(cfg.encoder.out_size,),
@@ -207,14 +213,16 @@ class LatentDFModel(nn.Module):
             encoder=encoder,
             decoder=decoder,
             action_model=action_model,
-            **cfg.latent_df_model
+            **cfg.latent_df_model,
+            train_autoencoder=train_autoencoder
         )
         
-        for param in model.encoder.parameters():
-            param.requires_grad = False
-        for param in model.decoder.parameters():
-            param.requires_grad = False
-        for param in model.action_model.parameters():
-            param.requires_grad = False
+        if train_autoencoder == False:
+            for param in model.encoder.parameters():
+                param.requires_grad = False
+            for param in model.decoder.parameters():
+                param.requires_grad = False
+            for param in model.action_model.parameters():
+                param.requires_grad = False
         
         return fabric.setup_module(model) 
