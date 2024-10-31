@@ -71,6 +71,8 @@ class LatentDFModel(nn.Module):
         x_pred = self.decoder(z_pred)
         
         if self.train_autoencoder:
+            # TODO: KL div is probably better here, more justifiable on report
+            # diffusion loss is still going down on libero 90 after the AE converges more or less
             ae_loss = F.mse_loss(self.decoder(z), obs)
             info["loss/autoencoder"] = ae_loss
                         
