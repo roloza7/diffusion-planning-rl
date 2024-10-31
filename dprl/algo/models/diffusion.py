@@ -13,6 +13,7 @@ import warnings
 from dprl.algo.models.transformer import Transformer
 from hydra.utils import instantiate
 from torch.distributions import Independent, OneHotCategorical
+from torch.distributions.kl import _kl_independent_independent
 
 class Diffusion(nn.Module):
     def __init__(self,
@@ -196,7 +197,7 @@ class Diffusion(nn.Module):
         return clipped_snr / snr
         
         
-    def forward(self, x : Tensor, noise_levels : LongTensor, external_cond : Optional[Tensor] = None) -> tuple[Tensor, Tensor]:
+    def forward(self, x : Tensor, noise_levels : LongTensor, external_cond : Optional[Tensor] = None, base_dist = None) -> tuple[Tensor, Tensor]:
         """
         Forward step
         
@@ -230,12 +231,15 @@ class Diffusion(nn.Module):
             num_states = int(x.shape[-1] // self.categorical_dim)
             pred = rearrange(pred, "b t (c k) -> b t c k", c=num_states, k=self.categorical_dim)
             pred_grad = F.softmax(pred, dim=-1)
-            pred = Independent(OneHotCategorical(logits=pred), reinterpreted_batch_ndims=1).sample() + pred_grad - pred_grad.detach()
+            pred_dist = Independent(OneHotCategorical(logits=pred), reinterpreted_batch_ndims=1)
+            pred = pred_dist.sample() + pred_grad - pred_grad.detach()
             pred = rearrange(pred, "b t c k -> b t (c k)")
             target = x
         
-        
-        loss = F.mse_loss(pred, target, reduction="none")
+        if self.noise_type == "categorical":
+            loss = _kl_independent_independent(pred_dist, base_dist)
+        else:    
+            loss = F.mse_loss(pred, target, reduction="none")
         loss_weight = self.compute_loss_weights(noise_levels)
         loss_weight = loss_weight.view(loss_weight.shape + (1,) * (loss.ndim - 2))
         loss = loss * loss_weight

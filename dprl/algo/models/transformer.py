@@ -28,6 +28,41 @@ class SinusoidalPosEmb(nn.Module):
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
 
+class AttnBlock(nn.Module):
+    def __init__(self,
+                 hidden_size,
+                 nhead,
+                 dim_feedforward,
+                 dropout):
+        super().__init__()
+    
+        self.mha = nn.MultiheadAttention(
+            embed_dim=hidden_size,
+            num_heads=nhead,
+            batch_first=True,
+            dropout=dropout,
+        )
+        
+        self.qkv = nn.Linear(hidden_size, hidden_size * 3)
+        self.ln1 = nn.RMSNorm(hidden_size)
+        self.ln2 = nn.RMSNorm(hidden_size)
+        
+        self.ff = nn.Sequential(
+            nn.Linear(hidden_size, dim_feedforward),
+            nn.SiLU(),
+            nn.Linear(dim_feedforward, hidden_size),
+        )
+        
+    def forward(self, x, mask, is_causal):
+        q, k, v = torch.chunk(self.qkv(x), 3, dim=-1)
+        
+        x = self.ln1(x + self.mha(q, k, v)[0])
+        x = self.ln2(x + self.ff(x))
+        
+        return x
+    
+
+
 class Transformer(nn.Module):
     """
     Transformer module designed to fit into diffusion block
@@ -61,15 +96,23 @@ class Transformer(nn.Module):
                  dropout : float = 0.6):
         super().__init__()
         self.external_cond_dim = external_cond_dim
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=hidden_size,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=num_layers)
-        
+        # encoder_layer = nn.TransformerEncoderLayer(
+        #     d_model=hidden_size,
+        #     nhead=nhead,
+        #     dim_feedforward=dim_feedforward,
+        #     dropout=dropout,
+        #     batch_first=True
+        # )
+        # self.transformer = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=num_layers)
+        self.attn_blocks = nn.ModuleList([
+            AttnBlock(
+                hidden_size,
+                nhead,
+                dim_feedforward,
+                dropout
+            ) for _ in range(num_layers)
+        ])
+
         # TIMESTEP embedding
         # do not confuse with position embedding, this embeds the diffusion time
         k_embed_dim = hidden_size // 2
@@ -126,7 +169,10 @@ class Transformer(nn.Module):
         x = x + rearrange(self.t_embed(torch.arange(seq_len, device=x.device)[:, None]), "t b d -> b t d")
         
         mask = nn.Transformer.generate_square_subsequent_mask(seq_len, x.device) if is_causal else None
-        x = self.transformer(x, mask=mask, is_causal=is_causal)
+        
+        for block in self.attn_blocks:
+            x = block(x, mask, is_causal)
+        
         x = self.out_mlp(x)
         return x
     

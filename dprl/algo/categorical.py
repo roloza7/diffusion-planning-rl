@@ -68,7 +68,7 @@ class CategoricalEncoder(nn.Module):
         
         return hidden
     
-    def forward(self, x : Tensor, needs_grad : bool = True):
+    def forward(self, x : Tensor, needs_grad : bool = True, need_dist = False):
         info = {}
         
         N, S = self.num_states, self.stochastic_size
@@ -102,6 +102,8 @@ class CategoricalEncoder(nn.Module):
         
         hidden = rearrange(hidden, "b t n e -> b t (n e)")
         
+        if need_dist:
+            return hidden, info, dist
         return hidden, info
         
         

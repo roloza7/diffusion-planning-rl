@@ -16,6 +16,7 @@ from dprl.algo.models import (
 from dprl.algo.categorical import CategoricalEncoder
 from einops import rearrange
 import tqdm
+from torch.distributions import Independent, OneHotCategorical
 
 import torch.nn.functional as F 
 
@@ -60,10 +61,14 @@ class LatentDFModel(nn.Module):
         z, encoder_info = self.encoder(obs) #B, T, E
         info = info | encoder_info
         
+        z_states = rearrange(z, "b t (c k) -> b t c k", k=self.diffusion.categorical_dim)
+        z_states = (z_states + 0.1) / (self.diffusion.categorical_dim * 0.1 + 1.0)
+        z_dist = Independent(OneHotCategorical(probs=z_states, validate_args=True), reinterpreted_batch_ndims=1)
+        
         # (B, L, -1)        
         noise_levels = generate_noise_levels(obs, masks=None, max_noise_level=self.diffusion.timesteps)
                 
-        z_pred, diffusion_loss = self.diffusion.forward(z, noise_levels, external_cond)
+        z_pred, diffusion_loss = self.diffusion.forward(z, noise_levels, external_cond, base_dist=z_dist)
          
         info["diffusion/loss"] = diffusion_loss.mean()
         
@@ -102,7 +107,15 @@ class LatentDFModel(nn.Module):
         z, _ = self.encoder(obs)
         
         z = z.clone()
-        z[:, ~mask] = torch.randn_like(z)[:, ~mask]
+        
+        
+        
+        noise = torch.zeros_like(z).fill_(1.0 / self.diffusion.categorical_dim)
+        z = torch.where(
+            ~mask[None, :, None].cuda(),
+            z,
+            noise
+        )
         
         frames = []
         
