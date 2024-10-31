@@ -235,11 +235,8 @@ class Diffusion(nn.Module):
             pred = pred_dist.sample() + pred_grad - pred_grad.detach()
             pred = rearrange(pred, "b t c k -> b t (c k)")
             target = x
-        
-        if self.noise_type == "categorical":
-            loss = _kl_independent_independent(pred_dist, base_dist)
-        else:    
-            loss = F.mse_loss(pred, target, reduction="none")
+
+        loss = F.mse_loss(pred, target, reduction="none")
         loss_weight = self.compute_loss_weights(noise_levels)
         loss_weight = loss_weight.view(loss_weight.shape + (1,) * (loss.ndim - 2))
         loss = loss * loss_weight

@@ -5,7 +5,7 @@ batch_size: 16
 
 base_channels: 128
 base_shape: [3, 64, 64]
-feedforward_dim: 1024
+feedforward_dim: 2048
 
 compile: False
 n_devices: 1
