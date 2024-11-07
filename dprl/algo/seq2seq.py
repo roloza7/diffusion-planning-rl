@@ -60,7 +60,7 @@ class LatentDFModel(nn.Module):
         # G Training step
         z, encoder_info = self.encoder(obs) #B, T, E
         info = info | encoder_info
-        
+                
         z_states = rearrange(z, "b t (c k) -> b t c k", k=self.diffusion.categorical_dim)
         z_states = (z_states + 0.1) / (self.diffusion.categorical_dim * 0.1 + 1.0)
         z_dist = Independent(OneHotCategorical(probs=z_states, validate_args=True), reinterpreted_batch_ndims=1)
@@ -69,7 +69,7 @@ class LatentDFModel(nn.Module):
         noise_levels = generate_noise_levels(obs, masks=None, max_noise_level=self.diffusion.timesteps)
                 
         z_pred, diffusion_loss = self.diffusion.forward(z, noise_levels, external_cond, base_dist=z_dist)
-         
+        
         info["diffusion/loss"] = diffusion_loss.mean()
         
          
@@ -78,7 +78,7 @@ class LatentDFModel(nn.Module):
         if self.train_autoencoder:
             # TODO: KL div is probably better here, more justifiable on report
             # diffusion loss is still going down on libero 90 after the AE converges more or less
-            ae_loss = F.mse_loss(self.decoder(z), obs)
+            ae_loss = F.mse_loss(self.decoder(z_pred), obs)
             info["loss/autoencoder"] = ae_loss
                         
         if act != None:

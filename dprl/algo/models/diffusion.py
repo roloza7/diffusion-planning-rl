@@ -243,7 +243,7 @@ class Diffusion(nn.Module):
         loss_weight = loss_weight.view(loss_weight.shape + (1,) * (loss.ndim - 2))
         loss = loss * loss_weight
         
-        return x_pred.view(x_orig_shape), loss        
+        return pred.view(x_orig_shape), loss        
         
     def backward_sample(self,
                         x : Tensor,
