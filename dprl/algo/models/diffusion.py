@@ -218,7 +218,9 @@ class Diffusion(nn.Module):
             noise = torch.randn_like(x)
             noise = torch.clamp(noise, -self.clip_noise, self.clip_noise)
         elif self.noise_type == "categorical":
-            noise = torch.zeros_like(x).fill_(1.0 / self.categorical_dim)
+            num_states = int(x.shape[-1] // self.categorical_dim)
+            noise = rearrange(torch.randn_like(x), "b t (c k) -> b t c k", c=num_states, k=self.categorical_dim)
+            noise = rearrange(noise.softmax(dim=-1), "b t c k -> b t (c k)")
         
         noised_x = self.forward_sample(x, noise_levels, noise=noise)
         epsilon, x_pred, pred = self.model_predictions(noised_x, noise_levels, external_cond=external_cond)
