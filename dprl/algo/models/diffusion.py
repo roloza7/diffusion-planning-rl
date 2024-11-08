@@ -31,7 +31,7 @@ class Diffusion(nn.Module):
                  ddim_sampling_eta : float = 1.0,
                  objective : str = "pred_noise",
                  noise_type : str = "normal", # normal | categorical
-                 categorical_dim : int = 16,
+                 categorical_dim : int = None,
                  model_kwargs : dict[str, Any] = {},
                  ):
         super().__init__()
@@ -209,6 +209,7 @@ class Diffusion(nn.Module):
             x_pred (Tensor): model's prediction of x_0
             loss (Tensor): prediction loss
         """
+        print(self.categorical_dim)
         
         x_orig_shape = x.shape
         if self.flatten:

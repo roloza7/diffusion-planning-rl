@@ -1,9 +1,9 @@
-name: autoencoder_S_no_codebook
+name: autoencoder_M_no_codebook
 
 total_steps: 100_000
 batch_size: 16
 
-base_channels: 128
+base_channels: 64
 base_shape: [3, 64, 64]
 feedforward_dim: 2048
 
@@ -15,7 +15,7 @@ encoder:
   base_channels: ${algo.base_channels}
   in_shape: ${algo.base_shape}
   channels_mult: [1, 2, 4, 8]
-  out_size: 1024
+  out_size: 512
   mlp_feedforward_dim: ${algo.feedforward_dim}
 
 decoder:
@@ -39,7 +39,7 @@ discriminator:
   mlp_depth: 2
   
 categorical:
-  stochastic_size: 32
+  stochastic_size: 16
   num_states: 32
   gradient_strategy: "st"
   loss_strategy: "mse" # "gan" | "mse"

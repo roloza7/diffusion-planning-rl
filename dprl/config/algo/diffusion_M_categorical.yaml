@@ -5,7 +5,7 @@ defaults:
 name: forced_diffusion_M
 base: autoencoder_M_no_codebook
 
-hidden_size: 1024
+hidden_size: 512
 total_steps: 100_000
 save_every : 10_000
 
