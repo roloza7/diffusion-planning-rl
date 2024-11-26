@@ -46,6 +46,18 @@ class LatentDFModel(nn.Module):
     def forward(self, *args, **kwargs):
         return self.__call__(*args, **kwargs)
     
+    def train_action(self, obs : Tensor, act : Tensor):
+        
+        z, encoder_info = self.encoder(obs)
+        
+        B, T, E = z.shape
+
+        z = torch.as_strided(z, size=(B, T - 1, E * 2), stride=(T * E, E, 1))
+        action_predictions : torch.distributions.Normal = self.action_model(z)
+        action_loss = -action_predictions.log_prob(act).mean()
+        
+        return action_loss
+    
     def __call__(self, obs : Tensor, external_cond : Tensor = None, act : Tensor = None):
         """
         Performs a forward step of the latent diffusion model
