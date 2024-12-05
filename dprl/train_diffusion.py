@@ -55,7 +55,10 @@ def train_diffusion(cfg : DictConfig) -> None:
     
     model : LatentDFModel
     model = LatentDFModel.from_config(fabric, cfg.algo, encoder=autoencoder.encoder, decoder=autoencoder.decoder, action_model=autoencoder.action_model, train_autoencoder=train_autoencoder)
-    optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-8)
+    encoder_decoder_params = list(model.diffusion.parameters()) + list(model.encoder.parameters()) + list(model.decoder.parameters())
+    optim = torch.optim.AdamW(encoder_decoder_params, lr=1e-4, weight_decay=1e-8)
+    action_optim = torch.optim.AdamW(model.action_model.parameters(), lr=1e-4, weight_decay=1e-8)
+    model.mark_forward_method(model.train_action)
     
     # Compilation increases speeds by 20-35%, but only really works on linux with triton installed
     # Blame openai for rejecting PR's that add windows support
@@ -113,6 +116,12 @@ def train_diffusion(cfg : DictConfig) -> None:
             """
             Diffusion optimization step
             """
+            action_optim.zero_grad(set_to_none=True)
+            action_loss = model.train_action(obs, act)
+            fabric.backward(action_loss)
+            fabric.clip_gradients(model.action_model, action_optim, max_norm=2.0)
+            action_optim.step()
+            
             optim.zero_grad(set_to_none=True)
             x_pred, loss, info = model.forward(obs, act=act)
             fabric.backward(loss)
