@@ -161,39 +161,34 @@ class LatentDFModel(nn.Module):
                ) -> Tensor:
         
         
-        batch_size, n_context_frames = obs.shape[:2]
+        batch_size, ctx_size = obs.shape[:2]
         curr_frame : int = 0
-        
+        xs, _ = self.encoder(obs)
         # Context Frames
-        x_pred = obs.clone()
-        curr_frame += n_context_frames
-        
-        frames = []
-        
+        x_pred = xs.clone()
+        curr_frame = xs.shape[1]
+                
+        print(curr_frame, n_frames)
         while curr_frame < n_frames:
-            if self.chunk_size > 0:
-                horizon = min(n_frames - curr_frame, self.chunk_size)
-            else:
-                horizon = n_frames - curr_frame
+            horizon = max(n_frames - curr_frame, 10)
+
             scheduling_matrix = self._generate_pyramid_scheduling_matrix(horizon, self.uncertainty_scale, self.diffusion.sampling_timesteps)
             chunk = torch.randn((batch_size, horizon) + x_pred.shape[2:], device=obs.device)
             chunk = torch.clamp(chunk, -self.diffusion.clip_noise, self.diffusion.clip_noise)
             x_pred = torch.cat([x_pred, chunk], dim=1)
             
             # Sliding windows
-            start_frame = max(0, curr_frame + horizon - 99)
+            start_frame = max(0, curr_frame + horizon - n_frames)
             # TODO: Implement guidance function for the end-to-end model
             
-            for m in range(scheduling_matrix.shape[0] - 1):
+            for m in tqdm.trange(scheduling_matrix.shape[0] - 1):
                 from_noise_levels = np.concatenate(
                     (np.zeros((curr_frame,), dtype=np.int64), scheduling_matrix[m])
                 )[None, :].repeat(batch_size, axis=0)
                 to_noise_levels = np.concatenate(
                     (np.zeros((curr_frame,), dtype=np.int64), scheduling_matrix[m + 1])
                 )[None, :].repeat(batch_size, axis=0)
-                
-                # print(from_noise_levels)
-                # print(to_noise_levels)
+
                 x_pred[:, start_frame:] = self.diffusion.backward_sample(
                     x=x_pred[:, start_frame:],
                     external_cond=external_cond[:, start_frame : curr_frame + horizon] if external_cond is not None else None,
@@ -201,11 +196,14 @@ class LatentDFModel(nn.Module):
                     next_noise_level=to_noise_levels[:, start_frame:]
                 )
                 
-                frames.append(x_pred.clone())
             
             curr_frame += horizon
+
+        B, T, E = x_pred.shape
+
+        x_pred = torch.as_strided(x_pred, size=(B, T - 1, E * 2), stride=(T * E, E, 1))
                 
-        return x_pred, frames
+        return self.action_model(x_pred[:, ctx_size-1]).mean[0]
     
     def _generate_pyramid_scheduling_matrix(self, horizon: int, uncertainty_scale: float, sampling_timesteps : int):
         height = sampling_timesteps + int((horizon - 1) * uncertainty_scale) + 1
