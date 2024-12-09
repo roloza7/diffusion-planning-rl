@@ -56,3 +56,9 @@ These are things that can make or break this, but if we can make this work, it m
 ### Conclusion
 
 If we can do this, it's pretty interesting, because it **completely avoids the value assignment problem** by independently deciding on a valuable state just using the returns. If we can make something consistent despite these challenges it creates a training paradigm where we can just throw more compute and VRAM at a RL problem (in the form of longer sequence lengths and deeper denoisers) instead of worrying about reward shaping, controlling critic variance, and whatever else.
+
+## Running Evaluation
+These are the steps to recreate evaluation results.
+1. Create a conda environment from the environment.yml
+3. Download the model weights [here](https://drive.google.com/file/d/1pGN05jolHdgK_6OQadBLA25rCBqo3xUV/view?usp=sharing). Put them in the following location: `diffusion-planning-rl/checkpoints/forced_diffusion_M/`
+2. Run all cells in the action_accuracy.ipynb in the analysis directory.
