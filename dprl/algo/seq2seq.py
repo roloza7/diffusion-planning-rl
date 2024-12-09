@@ -168,7 +168,7 @@ class LatentDFModel(nn.Module):
         x_pred = xs.clone()
         curr_frame = xs.shape[1]
                 
-        print(curr_frame, n_frames)
+        # print(curr_frame, n_frames)
         while curr_frame < n_frames:
             horizon = max(n_frames - curr_frame, 10)
 
@@ -181,7 +181,7 @@ class LatentDFModel(nn.Module):
             start_frame = max(0, curr_frame + horizon - n_frames)
             # TODO: Implement guidance function for the end-to-end model
             
-            for m in tqdm.trange(scheduling_matrix.shape[0] - 1):
+            for m in range(scheduling_matrix.shape[0] - 1):
                 from_noise_levels = np.concatenate(
                     (np.zeros((curr_frame,), dtype=np.int64), scheduling_matrix[m])
                 )[None, :].repeat(batch_size, axis=0)
